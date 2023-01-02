@@ -1,0 +1,728 @@
+Public Sub Email_Control()
+
+Dim Primary_Workbook As Workbook
+Dim Settings_Tab As Worksheet
+Dim Email_Status As String
+
+Set Primary_Workbook = ThisWorkbook
+Set Settings_Tab = Primary_Workbook.Sheets("Settings")
+
+Email_Status = Settings_Tab.Range("B1").Value
+
+If Email_Status = "OFF" Then
+
+    Settings_Tab.Range("B1").Value = "ON"
+
+Else
+
+    Settings_Tab.Range("B1").Value = "OFF"
+
+End If
+End Sub
+
+Public Sub Formula_Extender()
+
+Dim Primary_Workbook As Workbook
+Dim Data_Tab As Worksheet
+Dim Data_last_row As Long
+Dim Formula_Last_Row As Long
+
+
+Set Primary_Workbook = ThisWorkbook
+Set Data_Tab = Primary_Workbook.Sheets("Data")
+
+Data_last_row = Application.CountA(Data_Tab.Range("A:A"))
+Formula_Last_Row = Application.CountA(Data_Tab.Range("P:P"))
+
+'Clear the Existing Formulas
+Data_Tab.Range("P3:AB" & Formula_Last_Row * 2).ClearContents
+Data_Tab.Range("P3:AB" & Data_last_row * 2).ClearContents
+
+'ReDrag the Formulas
+
+Data_Tab.Range("P2:AD2").AutoFill Destination:=Data_Tab.Range("P2:AD" & Data_last_row)
+
+'Refresh the table
+ActiveWorkbook.RefreshAll
+
+'Set up Borders
+
+With Data_Tab.Range("A:AD").Borders
+    .LineStyle = xlContinuous
+    .Weight = xlThin
+    .ColorIndex = xlAutomatic
+End With
+
+End Sub
+Public Sub Splitter()
+
+'Declare Variables
+
+Dim Primary_Workbook As Workbook
+Dim Invoice_Workbook As Workbook
+
+
+Dim Data_Tab As Worksheet
+Dim Filter_Tab As Worksheet
+Dim Invoice_Worksheet As Worksheet
+Dim Summary_worksheet As Worksheet
+Dim Pivot_Worksheet As Worksheet
+Dim Settings_Tab As Worksheet
+
+Dim Primary_Data As Range
+Dim Filter_Criteria As Range
+Dim Output_Criteria As Range
+
+Dim i As Integer
+Dim j As Integer
+Dim k As Integer
+Dim Worksheetcount As Integer
+Dim Invoice_Count As Integer
+
+Dim pctdone As Single
+
+Dim Inv_Sheet_Name As String
+Dim Category_Code As String
+Dim File_Name As String
+Dim Output_Location As String
+Dim Last_Column_Address As String
+Dim Last_Column_Address2 As String
+Dim Outlook_Status As String
+Dim Dealer_Email As String
+Dim CC As String
+Dim BCC As String
+Dim English_Subject As String
+Dim English_Body As String
+Dim French_Subject As String
+Dim French_Body As String
+Dim Email_Subject As String
+Dim Email_Body As String
+Dim Current_English_Date As String
+Dim Current_French_Date As String
+Dim Current_Date As String
+
+Dim Last_Column As Long
+
+Dim StartTime As Double
+Dim MinutesElapsed As String
+
+Dim English_Toyota_Message As Variant
+Dim French_Toyota_Message As Variant
+Dim English_Lexus_Message As Variant
+Dim French_Lexus_Message As Variant
+
+Dim English_Heading As Variant
+Dim French_Heading As Variant
+
+'Input Progress Bar
+StartTime = Timer
+ProgressBar.ProgressLabel.Width = 0
+ProgressBar.Show vbModeless
+
+'Set Up Primary Workbook/sheets
+
+Set Primary_Workbook = ThisWorkbook
+Set Data_Tab = Primary_Workbook.Sheets("Data")
+Set Filter_Tab = Primary_Workbook.Sheets("Filter")
+Set Settings_Tab = Primary_Workbook.Sheets("Settings")
+
+'Store Message, Output and Email information
+
+English_Toyota_Message = Settings_Tab.Range("B14:B21")
+French_Toyota_Message = Settings_Tab.Range("B23:B30")
+
+English_Lexus_Message = Settings_Tab.Range("B35:B42")
+French_Lexus_Message = Settings_Tab.Range("B44:B51")
+
+English_Heading = Settings_Tab.Range("B55:B60")
+French_Heading = Settings_Tab.Range("B62:B67")
+
+Output_Location = Settings_Tab.Range("B5").Value
+Outlook_Status = Settings_Tab.Range("B1").Value
+
+CC = Settings_Tab.Range("B99").Value
+BCC = Settings_Tab.Range("B100").Value
+English_Subject = Settings_Tab.Range("B101").Value
+English_Body = Settings_Tab.Range("B102").Value
+French_Subject = Settings_Tab.Range("B103").Value
+French_Body = Settings_Tab.Range("B104").Value
+
+Current_English_Date = Settings_Tab.Range("B7").Value
+Current_French_Date = Settings_Tab.Range("B8").Value
+
+'Set up Filter List (Clear Prior List, Create and Sort New List)
+
+Filter_Tab.Range("C:C").Delete
+
+Data_Tab.Range("AA:AA").Copy
+
+With Filter_Tab.Range("C:C")
+    .PasteSpecial Paste:=xlPasteValues
+    .RemoveDuplicates 1, xlYes
+    .Sort key1:=.Cells(1), Order1:=xlAscending, Header:=xlYes
+End With
+
+'Count Number of Invoices
+
+Invoice_Count = Application.CountA(Filter_Tab.Range("C:C"))
+
+' Set Up Invoice_Workbook and index tab
+
+Set Pivot_Worksheet = Primary_Workbook.Sheets("Pivot")
+Set Invoice_Workbook = Workbooks.Add
+Set Summary_worksheet = Invoice_Workbook.Sheets("Sheet1")
+
+Summary_worksheet.Range("A:U").Value = Pivot_Worksheet.Range("A:U").Value
+
+With Summary_worksheet
+
+    .Cells.EntireColumn.AutoFit
+    .Rows(2).ClearContents
+
+End With
+
+Last_Column = Summary_worksheet.Cells(3, Columns.Count).End(xlToLeft).Column
+Last_Column_Address = Range("A1").Offset(2, Last_Column - 1).Address
+
+With Summary_worksheet
+
+    .Range("A1:U3").Font.Bold = True
+    .Range("A3:D3").Interior.Color = RGB(217, 225, 242)
+    .Range("F3", Last_Column_Address).Interior.Color = RGB(217, 225, 242)
+
+End With
+
+summary_last_row = Application.CountA(Summary_worksheet.Range("A:A"))
+Last_Column_Address2 = Range("A1").Offset(summary_last_row - 1, Last_Column - 1).Address
+
+With Summary_worksheet
+    .Rows(summary_last_row).Delete
+    .Rows(summary_last_row).Font.Bold = True
+
+    .Range("A" & summary_last_row & ":D" & summary_last_row).Interior.Color = RGB(217, 225, 242)
+    .Range("F" & summary_last_row, Last_Column_Address2).Interior.Color = RGB(217, 225, 242)
+    .Name = "Index"
+
+End With
+
+
+'Start the Loop
+Primary_Workbook.Activate
+
+For i = 2 To Invoice_Count
+
+pctdone = i / Invoice_Count
+
+MinutesElapsed = Format((Timer - StartTime) / 86400, "hh:mm:ss")
+Time_Remaining = Format(((Timer - StartTime) / i * (Invoice_Count - i)) / 86400, "hh:mm:ss")
+
+With ProgressBar
+    .StatusLabel.Caption = "Processing invoice " & i - 1 & " of " & Invoice_Count - 1
+    .ProgressLabel.Width = pctdone * (.ProgressFrame.Width)
+    .TimerLabel.Caption = "Time Elapsed " & MinutesElapsed & vbCr & _
+    "Time Remaining " & Time_Remaining
+
+
+End With
+DoEvents
+
+'Set up Invoice Worksheet
+Set Invoice_Worksheet = Invoice_Workbook.Worksheets.Add
+
+'Clear all Filters
+Primary_Workbook.Activate
+If Data_Tab.FilterMode = True Then
+Data_Tab.ShowAllData
+End If
+
+'Assign First Filter
+
+Filter_Tab.Range("A2").Value = Filter_Tab.Range("C" & i).Value
+
+'Assign Ranges
+
+Set Primary_Data = Data_Tab.Range("AA1").CurrentRegion
+Set Filter_Criteria = Filter_Tab.Range("A1").CurrentRegion
+Set Output_Data = Invoice_Worksheet.Range("A1")
+
+'Filter and Copy Range
+Primary_Data.AdvancedFilter xlFilterCopy, Filter_Criteria, Output_Data
+
+'Collect Logo/Language Codes, File Names, and Dealer_Email information
+
+Category_Code = Invoice_Worksheet.Range("AC2").Value
+File_Name = Invoice_Worksheet.Range("Z2").Value
+Dealer_Email = Invoice_Worksheet.Range("X2").Value
+
+' Determine Email and Invoice Language
+
+If Category_Code = "ET" Then
+
+    Invoice_Worksheet.Range("AF1:AF8").Value = English_Toyota_Message
+    Invoice_Worksheet.Range("AG1:AG6").Value = English_Heading
+    Email_Subject = English_Subject
+    Email_Body = English_Body
+    Current_Date = Current_English_Date
+
+ElseIf Category_Code = "FT" Then
+
+    Invoice_Worksheet.Range("AF1:AF8").Value = French_Toyota_Message
+    Invoice_Worksheet.Range("AG1:AG6").Value = French_Heading
+    Email_Subject = French_Subject
+    Email_Body = French_Body
+    Current_Date = Current_French_Date
+
+ElseIf Category_Code = "EL" Then
+
+    Invoice_Worksheet.Range("AF1:AF8").Value = English_Lexus_Message
+    Invoice_Worksheet.Range("AG1:AG6").Value = English_Heading
+    Email_Subject = English_Subject
+    Email_Body = English_Body
+    Current_Date = Current_English_Date
+
+Else
+    Invoice_Worksheet.Range("AF1:AF8").Value = French_Lexus_Message
+    Invoice_Worksheet.Range("AG1:AG6").Value = French_Heading
+    Email_Subject = French_Subject
+    Email_Body = French_Body
+    Current_Date = Current_French_Date
+
+End If
+
+'Resize Columns
+
+Invoice_Worksheet.Cells.EntireColumn.AutoFit
+
+'Rename Worksheet
+
+Inv_Sheet_Name = Invoice_Worksheet.Range("A2").Value
+Invoice_Worksheet.Name = Inv_Sheet_Name
+
+
+'Add Logos
+
+If Category_Code = "ET" Then
+
+    Primary_Workbook.Activate
+    Settings_Tab.Select
+    Settings_Tab.Range("A70:B75").Copy
+
+    Invoice_Workbook.Activate
+    Invoice_Worksheet.Select
+    Invoice_Worksheet.Range("AH1").Select
+    Invoice_Worksheet.Paste
+
+ElseIf Category_Code = "FT" Then
+
+    Primary_Workbook.Activate
+    Settings_Tab.Select
+    Settings_Tab.Range("A77:B82").Copy
+
+    Invoice_Workbook.Activate
+    Invoice_Worksheet.Select
+    Invoice_Worksheet.Range("AH1").Select
+    Invoice_Worksheet.Paste
+
+ElseIf Category_Code = "EL" Then
+
+    Primary_Workbook.Activate
+    Settings_Tab.Select
+    Settings_Tab.Range("A84:B89").Copy
+
+    Invoice_Workbook.Activate
+    Invoice_Worksheet.Select
+    Invoice_Worksheet.Range("AH1").Select
+    Invoice_Worksheet.Paste
+
+Else
+
+    Primary_Workbook.Activate
+    Settings_Tab.Select
+    Settings_Tab.Range("A91:B96").Copy
+
+    Invoice_Workbook.Activate
+    Invoice_Worksheet.Select
+    Invoice_Worksheet.Range("AH1").Select
+    Invoice_Worksheet.Paste
+
+End If
+
+'Add Current Date
+Invoice_Worksheet.Range("AM1").Value = Current_Date
+
+'Format invoice
+Call Formatter
+
+
+'Export to PDF
+Invoice_Worksheet.ExportAsFixedFormat Type:=xlTypePDF, Filename:=File_Name & ".pdf"
+
+'Add Worksheet to Table of Contents
+Invoice_Worksheet.Range("G18").Formula = "=HYPERLINK(""#'" & Summary_worksheet.Name & "'!A1"",""" & "Index" & """)"
+Invoice_Workbook.Sheets("Index").Range("A" & i + 2).Formula = "=HYPERLINK(""#'" & Inv_Sheet_Name & "'!A1"",""" & Inv_Sheet_Name & """)"
+
+'Email PDF
+
+If Outlook_Status = "ON" Then
+
+Dim OutApp As Object
+Dim OutMail As Object
+
+    Set OutApp = CreateObject("Outlook.Application")
+    Set OutMail = OutApp.CreateItem(0)
+
+    With OutMail
+        .To = Dealer_Email
+        .CC = CC
+        .BCC = BCC
+        .Subject = Email_Subject
+        .Body = Email_Body
+        .Attachments.Add File_Name & ".pdf"
+        .Send
+    End With
+
+Else
+End If
+
+
+Next i
+
+'Count and Organize the Worksheets in the Invoice Workbook
+
+Worksheetcount = Invoice_Workbook.Worksheets.Count
+
+For j = 1 To Worksheetcount - 1
+    For k = j + 1 To Worksheetcount
+        If Invoice_Workbook.Worksheets(k).Name < Invoice_Workbook.Worksheets(j).Name Then
+            Invoice_Workbook.Worksheets(k).Move before:=Invoice_Workbook.Worksheets(j)
+        End If
+    Next k
+Next j
+
+'Move the Index tab
+
+With Invoice_Workbook.Sheets("Index")
+    .Move before:=Invoice_Workbook.Sheets(1)
+
+End With
+
+
+'Save the Invoice_workbook
+
+Invoice_Workbook.SaveAs Output_Location & "\01_Summary_Workbook" & ".xlsx"
+Invoice_Workbook.Close False
+
+With ProgressBar
+    .PendingLabel.Caption = ""
+    .CompleteLabel.Caption = "Completed"
+End With
+
+'Display Message
+MsgBox (i - 2 & " invoices Generated ")
+Unload ProgressBar
+ActiveWorkbook.FollowHyperlink Output_Location
+
+End Sub
+
+
+Public Sub Run()
+
+'Setting up Progress Bar
+
+With ProgressBar
+    .StatusLabel.Caption = "Setting up Workbooks"
+    .TimerLabel.Caption = "Extending Formulas"
+    .PendingLabel = "Processing"
+    .ProgressLabel.Width = 0.3 * (.ProgressFrame.Width)
+    .Show vbModeless
+End With
+DoEvents
+
+' Extending Formulas
+Call Formula_Extender
+
+'Refreshing Progress Bar
+With ProgressBar
+    .StatusLabel.Caption = "Setting up Workbooks"
+    .TimerLabel.Caption = "Running Calculations"
+    .ProgressLabel.Width = 0.6 * (.ProgressFrame.Width)
+End With
+DoEvents
+
+Call Error_Warning
+
+Call Optimize_Start
+
+With ProgressBar
+    .StatusLabel.Caption = "Setting up Workbooks"
+    .TimerLabel.Caption = "Preparing Invoice Summary"
+    .ProgressLabel.Width = 0.9 * (.ProgressFrame.Width)
+    .Show vbModeless
+End With
+DoEvents
+
+Call Splitter
+Call Optimize_End
+
+
+
+End Sub
+Public Sub Optimize_Start()
+
+Application.Calculation = xlCalculationManual
+Application.ScreenUpdating = False
+Application.DisplayStatusBar = False
+ActiveSheet.DisplayPageBreaks = False
+
+End Sub
+
+
+Public Sub Optimize_End()
+
+
+Application.Calculation = xlCalculationAutomatic
+Application.ScreenUpdating = True
+Application.DisplayStatusBar = True
+ActiveSheet.DisplayPageBreaks = True
+
+End Sub
+
+Public Sub Clear()
+
+ActiveSheet.Range("A:O").ClearContents
+ActiveSheet.Range("A1").Select
+
+
+End Sub
+
+Sub Formatter()
+
+'Declare Variables
+
+Dim Message_1 As String
+Dim Message_2 As String
+Dim Message_3 As String
+Dim Message_4 As String
+Dim Message_5 As String
+Dim Message_6 As String
+Dim Message_7 As String
+Dim Message_8 As String
+
+Dim Heading_1 As String
+Dim Heading_2 As String
+Dim Heading_3 As String
+Dim Heading_4 As String
+Dim Heading_5 As String
+Dim Heading_6 As String
+
+Dim Dealer_Name As String
+Dim Dealer_Address As String
+Dim Dealer_City As String
+Dim Dealer_Postal_Code As String
+Dim Dealer_Province As String
+Dim Dealer_Number As String
+Dim Language_Code As String
+Dim Current_Date As String
+
+Dim Last_Row As Long
+Dim VIN_3_Row As Long
+Dim Final_Row As Long
+Dim Vin_Page As Long
+Dim Final_Page As Long
+
+Dim Total_Amount_Paid As Double
+
+'Set Variables
+
+Message_1 = Range("AF1").Value
+Message_2 = Range("AF2").Value
+Message_3 = Range("AF3").Value
+Message_4 = Range("AF4").Value
+Message_5 = Range("AF5").Value
+Message_6 = Range("AF6").Value
+Message_7 = Range("AF7").Value
+Message_8 = Range("AF8").Value
+
+Heading_1 = Range("AG1").Value
+Heading_2 = Range("AG2").Value
+Heading_3 = Range("AG3").Value
+Heading_4 = Range("AG4").Value
+Heading_5 = Range("AG5").Value
+Heading_6 = Range("AG6").Value
+
+Current_Date = Range("AM1").Value
+Dealer_Name = Range("B2").Value
+Dealer_Address = Range("T2").Value
+Dealer_City = Range("U2").Value
+Dealer_Postal_Code = Range("W2").Value
+Dealer_Province = Range("V2").Value
+Dealer_Number = Range("A2").Value
+Language_Code = Range("AB2").Value
+
+
+
+'Delete unneeded Columns
+
+Range("A:C").Delete
+Range("B:E").Delete
+Range("C:H").Delete
+Range("D:D").Delete
+Range("F:S").Delete
+Range("K:K").Delete
+
+'Move Table Down
+
+Rows("1:17").EntireRow.Insert
+
+'Move Logo
+
+Range("F19:H23").Select
+Selection.Cut
+Range("A1").Select
+ActiveSheet.Paste
+
+'Set up Opening Message
+
+Range("A6").Value = Current_Date
+Range("A13").Value = Message_1
+Range("A8").Value = Dealer_Name & " - " & Dealer_Number
+Range("A9").Value = Dealer_Address
+Range("A10").Value = Dealer_City & " " & Dealer_Province
+Range("A11").Value = Dealer_Postal_Code
+
+Range("A15").Value = Message_2
+Range("A16").Value = Message_3
+
+'Set up Table Headings
+
+Range("A18").Value = Heading_1
+Range("B18").Value = Heading_2
+Range("C18").Value = Heading_3
+Range("D18").Value = Heading_4
+Range("E18").Value = Heading_5
+
+'Format Columns
+
+If Language_Code = "F" Then
+
+    Application.DecimalSeparator = ","
+    Application.ThousandsSeparator = " "
+    Application.UseSystemSeparators = False
+
+    Columns("B:B").NumberFormat = "[$-040C]d mmmm yyyy"
+    Range("A6").NumberFormat = "[$-040C]d mmmm yyyy"
+    Columns("C:E").NumberFormat = "#,##0.00 $"
+
+Else
+    Application.UseSystemSeparators = True
+    Columns("B:B").NumberFormat = "mmmm d, yyyy"
+    Range("A6").NumberFormat = "mmmm d, yyyy"
+    Columns("C:E").Style = "Currency"
+End If
+
+Range("A6").HorizontalAlignment = xlLeft
+
+
+Columns("A:A").ColumnWidth = 20
+Columns("B:B").ColumnWidth = 13
+Columns("C:C").ColumnWidth = 15
+Columns("D:D").ColumnWidth = 17
+Columns("E:E").ColumnWidth = 18
+
+'Format Headings
+
+With Rows("18:18")
+
+    .RowHeight = 45
+    .Interior.ColorIndex = 0
+    .Font.Bold = True
+    .VerticalAlignment = xlTop
+    .HorizontalAlignment = xlCenter
+    .WrapText = True
+
+End With
+
+'Determine Last Row
+
+Last_Row = Application.CountA(Range("A:A")) + 12
+
+'Calculate Total Cheque Amount
+
+total_cheque_Amount = Application.WorksheetFunction.Sum(Columns("E:E"))
+
+
+'Set up Total Cheque Box
+
+Range("D" & Last_Row).Value = Heading_6
+
+With Range("D" & Last_Row & ":E" & Last_Row)
+
+    .Font.Bold = True
+    .Borders.LineStyle = xlContinuous
+    .Borders.Weight = xlThin
+    .Borders.ColorIndex = xlAutomatic
+
+End With
+
+Range("E" & Last_Row).Value = total_cheque_Amount
+
+'Set up Closing Message
+
+Range("A" & Last_Row + 2).Value = Message_4
+Range("A" & Last_Row + 3).Value = Message_5
+Range("A" & Last_Row + 4).Value = Message_6
+Range("A" & Last_Row + 6).Value = Message_7
+Range("A" & Last_Row + 7).Value = Message_8
+
+
+'Determine Final_Row and 3rd last VIN Row
+
+VIN_3_Row = Last_Row - 5
+Final_Row = Last_Row + 8
+
+'Determine Page Location for 3rd last row and final row
+
+If VIN_3_Row <= 44 Then
+    Vin_Page = 1
+Else
+    Vin_Page = Application.WorksheetFunction.Ceiling(((VIN_3_Row - 44) / 47 + 1), 1)
+End If
+
+If Final_Row <= 44 Then
+    Final_Page = 1
+Else
+    Final_Page = Application.WorksheetFunction.Ceiling(((Final_Row - 44) / 47 + 1), 1)
+End If
+
+'Apply Page Break if necessary
+
+If Vin_Page <> Final_Page Then
+    Rows(VIN_3_Row).PageBreak = xlPageBreakManual
+Else
+End If
+
+Range("D1").Select
+
+End Sub
+
+Public Sub Error_Warning()
+
+
+Dim Primary_Workbook As Workbook
+Dim Settings_Worksheet As Worksheet
+
+Dim Error_Alert As String
+
+Set Primary_Workbook = ThisWorkbook
+Set Settings_Worksheet = Primary_Workbook.Sheets("Settings")
+
+Error_Alert = Settings_Worksheet.Range("B2").Value
+
+If Error_Alert = "Fine" Then
+Else
+MsgBox ("Error in Data Tab")
+End
+
+End If
+
+End Sub
