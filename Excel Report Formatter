@@ -1,0 +1,540 @@
+
+Public Sub Transfer_Update_2()
+
+'Declare Variables
+
+Dim Query_Workbook As Workbook
+Dim Report_Workbook As Workbook
+Dim Calender_Tab As Worksheet
+Dim Pivot_Tab As Worksheet
+Dim Report_Tab As Worksheet
+
+Dim Folder As String
+Dim Master_File_Path As String
+Dim File_Tab As String
+Dim File_Name As String
+Dim Tab_Title As String
+
+Dim Colour_Start As String
+Dim Colour_End As String
+Dim Colour_interior As Integer
+
+Dim Report_Length As Integer
+Dim New_Lease_Total As Integer
+Dim Loop_Counter As Integer
+Dim i As Integer
+Dim Highlight_Counter As Integer
+
+Dim LRT_Range As Range
+Dim Veh_Heading_Range As Range
+Dim New_Veh_Heading_Range As Range
+Dim All_Veh_Heading_Range As Range
+
+Dim New_Lease_Total_Col_Rng As Range
+Dim New_Loan_Total_Col_Rng As Range
+Dim New_Total_Col_Rng As Range
+
+Dim Lease_Total_Col_Rng As Range
+Dim Loan_Total_Col_Rng As Range
+Dim Grand_Total_Col_Rng As Range
+Dim Add_Range As Range
+Dim Formula_End As Range
+
+
+'Refresh Data
+Call Refresh
+
+'Set up the Query Workbook and Report Workbook
+
+Set Query_Workbook = ThisWorkbook
+Set Calender_Tab = Query_Workbook.Sheets("Week Calendar")
+Set Pivot_Tab = Query_Workbook.Sheets("Weekly Report Pivot Table")
+
+Master_File_Path = Query_Workbook.Sheets("File Information").Range("B9").Value
+Folder = Query_Workbook.Sheets("File Information").Range("B10").Value
+File_Tab = Query_Workbook.Sheets("File Information").Range("B11").Value
+File_Name = Query_Workbook.Sheets("File Information").Range("B12").Value
+Tab_Title = Query_Workbook.Sheets("File Information").Range("B13").Value
+
+Set Report_Workbook = Workbooks.Open(Filename:=Master_File_Path, UpdateLinks:=0)
+Set Report_Tab = Report_Workbook.Sheets(File_Tab)
+
+'Clear The Worksheet in the Master File and set up the font size
+
+Report_Workbook.Activate
+
+With Report_Tab.Cells
+    .EntireRow.Hidden = False
+    .EntireColumn.Hidden = False
+    .Clear
+    .Font.Name = "Arial Narrow"
+    .Font.Size = 8
+    .HorizontalAlignment = xlCenter
+    
+End With
+
+'Copy The Calendar and set up the date format
+
+With Report_Tab
+    .Range("A6:C58").Value = Calender_Tab.Range("A1:C53").Value
+    .Range("B:C").NumberFormat = "d-mmm"
+    .Columns("A:C").ColumnWidth = 7
+End With
+
+
+'Copy the Pivot Table
+
+Query_Workbook.Activate
+Pivot_Tab.Activate
+Pivot_Tab.Range("A1").CurrentRegion.Copy
+
+Report_Workbook.Activate
+Report_Tab.Range("D4").PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+                  :=False, Transpose:=False
+
+'Delete Row_Label Colum, and Column_Labels Cell
+
+Report_Tab.Columns(4).Delete
+Report_Tab.Range("D4").ClearContents
+
+'Calculate the Length of the Report before any Total Columns are added
+
+Report_Length = Application.WorksheetFunction.CountA(Rows(7))
+
+'Turn Lease/Loan/Blank Headings into L,R,Total
+
+Report_Tab.Activate
+Set LRT_Range = Report_Tab.Range(Cells(6, 4), Cells(6, Report_Length))
+
+For Each cell In LRT_Range
+    
+    cell.ColumnWidth = 4
+
+    If cell.Value = "LEASE" Then
+        cell.Value = "L"
+    ElseIf cell.Value = "LOAN" Then
+        cell.Value = "R"
+    Else
+        cell.Value = "Total"
+    End If
+
+Next cell
+
+'Clean up Vehicle Headings (get rid of the A-)
+
+Set Veh_Heading_Range = Report_Tab.Range(Cells(5, 4), Cells(5, Report_Length))
+
+For Each cell In Veh_Heading_Range
+    If Mid(cell, 2, 1) = "-" Then
+        cell.Value = Right(cell, Len(cell) - 2)
+    End If
+Next cell
+
+'Clean up Vehicle Headings (get rid of the Total Headings)
+
+For Each cell In Veh_Heading_Range
+        If Right(cell, 5) = "Total" And Len(cell.Text) > 5 Then cell.ClearContents
+    Next cell
+
+'Insert 3 Columns to the Left of Used Heading (to store the new total)
+
+Loop_Counter = 0
+
+Do Until Loop_Counter = 3
+    Report_Tab.Cells(5, Report_Length - 2).EntireColumn.Insert
+    Loop_Counter = Loop_Counter + 1
+Loop
+
+'Insert L,R,Total headings for New Vehicle Total
+
+Cells(5, Report_Length - 2).Value = "Total"
+Cells(6, Report_Length - 2).Value = "L"
+Cells(6, Report_Length - 1).Value = "R"
+Cells(6, Report_Length - 0).Value = "Total"
+
+
+'Calculate Total for New Leases (By Hiding R and Total Column then Adding up Visible Cells)
+
+Set New_Veh_Heading_Range = Report_Tab.Range(Cells(6, 4), Cells(6, Report_Length - 3))
+Set New_Lease_Total_Col_Rng = Report_Tab.Range(Cells(7, Report_Length - 2), Cells(58, Report_Length - 2))
+
+For Each cell In New_Veh_Heading_Range
+    If cell.Value <> "L" Then
+    cell.EntireColumn.Hidden = True
+    End If
+Next cell
+
+i = 7
+
+For Each cell In New_Lease_Total_Col_Rng
+    Set Add_Range = Range(Cells(i, 4), Cells(i, Report_Length - 3))
+    cell.Value = WorksheetFunction.Sum(Add_Range.SpecialCells(xlCellTypeVisible))
+    i = i + 1
+Next cell
+
+Cells.EntireColumn.Hidden = False
+Cells.EntireRow.Hidden = False
+
+'Calculate Total for New Loans (By Hiding L and Total Column then Adding up Visible Cells)
+
+Set New_Loan_Total_Col_Rng = Report_Tab.Range(Cells(7, Report_Length - 1), Cells(58, Report_Length - 1))
+
+For Each cell In New_Veh_Heading_Range
+    If cell.Value <> "R" Then
+    cell.EntireColumn.Hidden = True
+    End If
+Next cell
+
+i = 7
+
+For Each cell In New_Loan_Total_Col_Rng
+    Set Add_Range = Range(Cells(i, 4), Cells(i, Report_Length - 3))
+    
+    cell.Value = WorksheetFunction.Sum(Add_Range.SpecialCells(xlCellTypeVisible))
+    i = i + 1
+Next cell
+
+Cells.EntireColumn.Hidden = False
+Cells.EntireRow.Hidden = False
+
+'Add the New Lease and Loan Totals
+
+Set New_Total_Col_Rng = Report_Tab.Range(Cells(7, Report_Length), Cells(58, Report_Length))
+
+i = 7
+
+For Each cell In New_Total_Col_Rng
+    Set Add_Range = Range(Cells(i, Report_Length - 1), Cells(i, Report_Length - 2))
+    cell.Value = WorksheetFunction.Sum(Add_Range)
+   
+    i = i + 1
+Next cell
+
+'Insert Total Subaru Headings and adjust column width
+
+Cells(4, Report_Length + 4).Value = "Total SUBARU"
+Cells(5, Report_Length + 4).Value = "New & Used"
+Cells(6, Report_Length + 4).Value = "L"
+Cells(6, Report_Length + 5).Value = "R"
+Cells(6, Report_Length + 6).Value = "Total"
+
+Cells(6, Report_Length + 4).EntireColumn.ColumnWidth = 4
+Cells(6, Report_Length + 5).EntireColumn.ColumnWidth = 4
+Cells(6, Report_Length + 6).EntireColumn.ColumnWidth = 4
+
+'Add the Lease Grand Totals
+
+Set Lease_Total_Col_Rng = Report_Tab.Range(Cells(7, Report_Length + 4), Cells(58, Report_Length + 4))
+
+i = 7
+
+For Each cell In Lease_Total_Col_Rng
+    cell.Value = Cells(i, Report_Length - 2).Value + Cells(i, Report_Length + 1).Value
+    i = i + 1
+Next cell
+
+
+'Add the Loan Grand Totals
+
+Set Loan_Total_Col_Rng = Report_Tab.Range(Cells(7, Report_Length + 5), Cells(58, Report_Length + 5))
+
+i = 7
+
+For Each cell In Loan_Total_Col_Rng
+    cell.Value = Cells(i, Report_Length - 1).Value + Cells(i, Report_Length + 2).Value
+    i = i + 1
+Next cell
+
+'Add in the Grand Totals
+
+Set Grand_Total_Col_Rng = Report_Tab.Range(Cells(7, Report_Length + 6), Cells(58, Report_Length + 6))
+
+i = 7
+
+For Each cell In Grand_Total_Col_Rng
+    cell.Value = Cells(i, Report_Length + 4).Value + Cells(i, Report_Length + 5).Value
+    i = i + 1
+Next cell
+
+'Add in Remaining Headings
+
+Report_Tab.Range("A2").Value = Tab_Title
+Report_Tab.Range("D3").Value = "Contracts Purchased"
+Report_Tab.Range("D4").Value = "New/Demo"
+
+Cells(4, Report_Length + 1).Value = "Used"
+Cells(5, Report_Length + 1).Value = "Total"
+
+'Format the Report
+
+With Report_Tab
+
+    .Rows("2:6").Font.Bold = True
+    .Range("A3:C58").Interior.ColorIndex = 48
+    .Range("D5").CurrentRegion.Borders.LineStyle = xlContinuous
+    .Range("D5").CurrentRegion.Borders.Weight = xlThin
+  
+End With
+
+
+'Highlight the Vehicles Columne Gray and White
+
+Highlight_Counter = 1
+
+For Each cell In LRT_Range
+
+    Colour_Start = cell.Offset(-1, 0).Address
+    Colour_End = cell.Offset(52, 0).Address
+        
+    If Highlight_Counter < 4 Then
+        Colour_interior = 15
+    Else
+        Colour_interior = 2
+
+    End If
+    
+    Report_Tab.Range(Colour_Start, Colour_End).Interior.ColorIndex = Colour_interior
+    Report_Tab.Range(Colour_Start, Colour_End).ColumnWidth = 4
+      
+    Highlight_Counter = Highlight_Counter + 1
+    
+    If Highlight_Counter > 6 Then
+    Highlight_Counter = 1
+
+    End If
+          
+Next cell
+
+'Merge the Vehicle Column Headings
+
+Set All_Veh_Heading_Range = Report_Tab.Range(Cells(5, 4), Cells(5, Report_Length + 4))
+
+For Each cell In All_Veh_Heading_Range
+    
+    If cell <> 0 Then
+        Set Merge_Start = cell
+        Set Merge_End = Merge_Start.Offset(0, 2)
+        Range(Merge_Start, Merge_End).Merge
+    End If
+Next cell
+
+
+
+
+'Highlight the New Vehicle Total Columns Light Gray
+
+New_Lease_Total_Col_Rng.Interior.ColorIndex = 48
+New_Loan_Total_Col_Rng.Interior.ColorIndex = 48
+New_Total_Col_Rng.Interior.ColorIndex = 48
+
+Cells(5, Report_Length - 0).Interior.ColorIndex = 48
+Cells(5, Report_Length - 1).Interior.ColorIndex = 48
+Cells(5, Report_Length - 2).Interior.ColorIndex = 48
+
+Cells(6, Report_Length - 0).Interior.ColorIndex = 48
+Cells(6, Report_Length - 1).Interior.ColorIndex = 48
+Cells(6, Report_Length - 2).Interior.ColorIndex = 48
+
+
+'Highlight the Total Subaru Columns Yellow
+
+Lease_Total_Col_Rng.Interior.ColorIndex = 19
+Loan_Total_Col_Rng.Interior.ColorIndex = 19
+Grand_Total_Col_Rng.Interior.ColorIndex = 19
+
+Cells(4, Report_Length + 4).Interior.ColorIndex = 19
+Cells(4, Report_Length + 5).Interior.ColorIndex = 19
+Cells(4, Report_Length + 6).Interior.ColorIndex = 19
+
+Cells(5, Report_Length + 4).Interior.ColorIndex = 19
+Cells(5, Report_Length + 5).Interior.ColorIndex = 19
+Cells(5, Report_Length + 6).Interior.ColorIndex = 19
+
+Cells(6, Report_Length + 4).Interior.ColorIndex = 19
+Cells(6, Report_Length + 5).Interior.ColorIndex = 19
+Cells(6, Report_Length + 6).Interior.ColorIndex = 19
+
+'Highlight Used Lease Column Black and turning the rest of them white
+
+Report_Tab.Range(Cells(5, Report_Length + 1), Cells(58, Report_Length + 3)).Interior.ColorIndex = 2
+Report_Tab.Range(Cells(7, Report_Length + 1), Cells(58, Report_Length + 1)).Interior.ColorIndex = 1
+
+'Highlight Contacts Purchased Column Black and white and resize
+
+With Report_Tab.Range("D3", Cells(3, Report_Length + 6))
+
+    .Merge
+    .HorizontalAlignment = xlCenter
+    .Interior.ColorIndex = 1
+    .Font.ColorIndex = 2
+
+End With
+
+
+'Merge and Textwrap Week Starting and Week Ending
+
+With Report_Tab
+    
+    .Range("A3:C6").VerticalAlignment = xlCenter
+    .Range("A3:C6").WrapText = True
+    
+    .Range("A3:A6").Merge
+    .Range("B3:B6").Merge
+    .Range("C3:C6").Merge
+
+End With
+
+'Merge and resize Contract Volume
+
+With Rows(2)
+    .RowHeight = 25
+    .Font.Name = "Arial"
+    .Font.Size = 8
+    .VerticalAlignment = xlCenter
+End With
+
+Report_Tab.Range("A2", Cells(2, Report_Length + 6)).Merge
+
+'Merge and Resize New/Demo
+
+With Report_Tab.Range("D4", Cells(4, Report_Length))
+    .Interior.ColorIndex = 15
+    .Merge
+End With
+
+'Merge and Colour Used Heading Dark Gray
+
+With Report_Tab.Range(Cells(4, Report_Length + 1), Cells(4, Report_Length + 3))
+    
+    .Merge
+    .HorizontalAlignment = xlCenter
+    .Interior.ColorIndex = 16
+    
+End With
+
+'Merge Total Subaru Heading
+
+Report_Tab.Range(Cells(4, Report_Length + 4), Cells(4, Report_Length + 6)).Merge
+
+'Add the Subtotal headings
+
+With Report_Tab
+    .Range("C60").Value = "TOTAL"
+    .Range("C61").Value = "TOTAL %"
+    .Range("C62").Value = "AVG"
+    .Range("C63").Value = "HIGH"
+    .Range("C64").Value = "LOW"
+   
+End With
+
+'Insert the Subtotal Formulas
+
+With Report_Tab
+    .Range("D60").Formula = "=SUM(D7:D58)"
+    .Range("D61").Formula = "=IF(COLUMN(D60)=COUNTA($7:$7),D60/OFFSET($A$60,0,COUNTA($7:$7)-1),IF(COLUMN(D60)=COUNTA($7:$7)-1,D60/OFFSET($A$60,0,COUNTA($7:$7)-1),IF(COLUMN(D60)=COUNTA($7:$7)-2,D60/OFFSET($A$60,0,COUNTA($7:$7)-1),IF(D6=""L"",D60/OFFSET($A$60,0,COUNTA($7:$7)-3),IF(D6=""R"",D60/OFFSET($A$60,0,COUNTA($7:$7)-2),D60/OFFSET($A$60,0,COUNTA($7:$7)-1))))))"
+    .Range("D62").Formula = "=SUM(D7:D58)/COUNTIF(D7:D58,"">-1000"")"
+    .Range("D63").Formula = "=MAX(D7:D58)"
+    .Range("D64").Formula = "=MIN(D7:D58)"
+ 
+End With
+
+'Stretch Formulas
+
+Set Formula_End = Report_Tab.Range(Cells(60, Report_Length + 6), (Cells(64, Report_Length + 6)))
+Report_Tab.Range("D60", Formula_End).FillRight
+
+Rows(61).NumberFormat = "0%"
+Rows(62).NumberFormat = "0"
+
+'Colour Formula box and add borders
+
+With Report_Tab.Range("C60").CurrentRegion
+
+    .Interior.Color = RGB(184, 204, 228)
+    .Borders.LineStyle = xlContinuous
+    .Borders.Weight = xlThin
+    
+End With
+
+With Report_Tab
+    .Range("A60:C64").Interior.ColorIndex = 48
+    .Range("A60:C64").Font.Bold = True
+    .Range("A60", (Cells(60, Report_Length + 6))).Interior.ColorIndex = 19
+    .Rows(60).Font.Bold = True
+    .Rows(62).Font.Bold = True
+End With
+
+With Report_Tab
+
+    .Range("C60", (Cells(60, Report_Length + 6))).BorderAround , Weight:=xlMedium
+    .Range("A60:B64").BorderAround , Weight:=xlThin
+
+End With
+
+'Copy and revise Vehicle and LRT Headings
+
+With Report_Tab
+    .Range("D5", Cells(6, Report_Length + 6)).Copy
+    .Range("D67", Cells(68, Report_Length + 6)).PasteSpecial xlValues
+    .Range("D67", Cells(68, Report_Length + 6)).PasteSpecial xlFormats
+   
+End With
+
+With Report_Tab.Cells(67, Report_Length + 1)
+    .Value = "Used"
+    .Interior.Color = RGB(184, 204, 228)
+End With
+
+Report_Tab.Cells(67, Report_Length + 1).Borders(xlEdgeLeft).Weight = xlMedium
+Report_Tab.Cells(67, Report_Length + 3).Borders(xlEdgeRight).Weight = xlMedium
+Report_Tab.Cells(67, Report_Length - 2).Value = "Total New"
+
+
+Report_Tab.Cells(67, Report_Length - 2).Interior.Color = RGB(184, 204, 228)
+
+Report_Tab.Range(Cells(67, Report_Length - 2), (Cells(68, Report_Length + 3))).Interior.Color = RGB(184, 204, 228)
+
+
+'Copy over Total Rows and clean up borders
+
+Rows(60).Copy
+Rows(69).PasteSpecial xlValues
+
+Report_Tab.Range(Cells(69, Report_Length - 2), Cells(69, Report_Length)).Interior.ColorIndex = 2
+
+With Report_Tab.Range(Cells(67, 4), Cells(69, Report_Length + 6))
+    .Borders.LineStyle = xlContinuous
+    .Borders.Weight = xlThin
+    .BorderAround , Weight:=xlMedium
+End With
+
+Report_Tab.Range("A66", Cells(69, Report_Length + 6)).BorderAround , Weight:=xlMedium
+Report_Tab.Range("A67", Cells(69, Report_Length + 3)).BorderAround , Weight:=xlMedium
+Report_Tab.Range("A67", Cells(69, Report_Length + 6)).BorderAround , Weight:=xlMedium
+Report_Tab.Range("D67", Cells(69, Report_Length)).BorderAround , Weight:=xlMedium
+Report_Tab.Range("D67", Cells(69, Report_Length - 3)).BorderAround , Weight:=xlMedium
+Report_Tab.Range("A66", Cells(66, Report_Length + 6)).Interior.Color = RGB(54, 96, 146)
+Report_Tab.Range("A66", Cells(66, Report_Length + 6)).Font.ColorIndex = 2
+
+
+'Set up YTD Headings
+
+With Report_Tab
+  
+    .Range("A67:C69").Clear
+    .Range("A67:C69").BorderAround , Weight:=xlMedium
+    
+    .Range("A66:C69").Font.Bold = True
+    .Range("A66:C69").HorizontalAlignment = xlLeft
+   
+    .Range("A66").Value = "TCCI - YTD bookings"
+    .Range("A66").Font.Name = "Arial"
+    .Range("A66").Font.Size = 8
+    
+    .Range("A67").Value = "TCCI - YTD bookings:"
+    .Range("A67").Font.Name = "Arial"
+    .Range("A67").Font.Size = 8
+
+End With
+
+End Sub
