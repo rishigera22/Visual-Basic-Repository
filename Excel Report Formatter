@@ -67,6 +67,8 @@ With Report_Tab.Cells
     .EntireRow.Hidden = False
     .EntireColumn.Hidden = False
     .Clear
+    .ClearContents
+    .EntireRow.AutoFit
     .Font.Name = "Arial Narrow"
     .Font.Size = 8
     .HorizontalAlignment = xlCenter
@@ -99,7 +101,7 @@ Report_Tab.Range("D4").ClearContents
 
 'Calculate the Length of the Report before any Total Columns are added
 
-Report_Length = Application.WorksheetFunction.CountA(Rows(7))
+Report_Length = Application.WorksheetFunction.CountA(Report_Tab.Rows(7))
 
 'Turn Lease/Loan/Blank Headings into L,R,Total
 
@@ -151,6 +153,7 @@ Cells(5, Report_Length - 2).Value = "Total"
 Cells(6, Report_Length - 2).Value = "L"
 Cells(6, Report_Length - 1).Value = "R"
 Cells(6, Report_Length - 0).Value = "Total"
+
 
 
 'Calculate Total for New Leases (By Hiding R and Total Column then Adding up Visible Cells)
