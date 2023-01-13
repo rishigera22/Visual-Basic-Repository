@@ -1,0 +1,168 @@
+
+Public Sub Calendar_Setup()
+
+Dim Tableau_Sheet As Worksheet
+Dim Calendar_Sheet As Worksheet
+Dim PY_Setup_1 As Worksheet
+Dim PY_Setup_2 As Worksheet
+Dim PY_Setup_3 As Worksheet
+
+Dim Start_Date As Date
+Dim End_Date As Date
+
+Dim Total_Row As Integer
+Dim Start_Point As Integer
+Dim End_Point As Integer
+
+Set Tableau_Sheet = ThisWorkbook.Sheets("Tableau Extract")
+Set Calendar_Sheet = ThisWorkbook.Sheets("Calendar Date")
+Set PY_Setup_1 = ThisWorkbook.Sheets("PY Setup 1")
+Set PY_Setup_2 = ThisWorkbook.Sheets("PY Setup 2")
+Set PY_Setup_3 = ThisWorkbook.Sheets("PY Setup 3")
+
+'Set up Tableau Sheet
+
+Tableau_Sheet.Activate
+
+'Clear the Grand Total Line
+
+Total_Row = WorksheetFunction.CountA(Tableau_Sheet.Range("A:A"))
+Tableau_Sheet.Range("A" & Total_Row).EntireRow.ClearContents
+
+'Set up Calendar Sheet
+
+Calendar_Sheet.Activate
+
+'Clear the Contents
+Calendar_Sheet.Range("A:F").ClearContents
+
+'Input the Start Date
+
+Start_Date = InputBox("Input Start Date")
+Calendar_Sheet.Range("A1").Value = Start_Date
+
+'Input the Formulas
+
+Calendar_Sheet.Range("B1").Formula = "=A1-364"
+Calendar_Sheet.Range("C1").Formula = "=B1-364"
+Calendar_Sheet.Range("F1").Formula = "=EOMONTH(A1,0)"
+
+'Set the End Date
+
+End_Date = Calendar_Sheet.Range("F1").Value
+
+'Extend Column A to get to the End Date
+
+End_Point = DatePart("d", End_Date)
+Calendar_Sheet.Range("A1:C1").AutoFill Destination:=Calendar_Sheet.Range("A1:C" & End_Point)
+Calendar_Sheet.Range("A:F").EntireColumn.AutoFit
+
+'Set up PY_Setup_1
+
+With PY_Setup_1
+
+    .Activate
+    .AutoFilterMode = False
+    .Range("A:S").ClearContents
+
+End With
+
+'Copy over Calendar data
+
+Calendar_Sheet.Activate
+Calendar_Sheet.Range("A:C").Copy
+
+PY_Setup_1.Activate
+PY_Setup_1.Range("Q:S").PasteSpecial xlPasteValues
+PY_Setup_1.Range("Q:S").NumberFormat = "dddd , mmmm d,yyyy"
+
+'Copy over Extract data
+
+Tableau_Sheet.Activate
+Tableau_Sheet.Range("A:D").Copy
+PY_Setup_1.Activate
+PY_Setup_1.Range("A:D").PasteSpecial xlPasteValues
+
+'Input Headings and Formulas
+
+With PY_Setup_1
+
+    .Range("E1").Value = "Weekday"
+    .Range("F1").Value = "PY"
+    .Range("G1").Value = "P2Y"
+    .Range("H1").Value = "PY Date"
+    .Range("I1").Value = "P2Y Date"
+    
+    .Range("E3").Formula = "=LEFT(A3,1)"
+    .Range("F3").Formula = "=IFERROR(IF($E3=""S"",0,IF($E3=""M"",C3+C2+C1,C3)),C3+C2)"
+    .Range("G3").Formula = "=IFERROR(IF($E3=""S"",0,IF($E3=""M"",D3+D2+D1,D3)),D3+D2)"
+    
+    .Range("H3").Formula = "=R2"
+    .Range("I3").Formula = "=S2"
+    
+    .Range("H:I").NumberFormat = "m/d"
+
+End With
+
+'Drag Formulas down and up
+
+With PY_Setup_1.Range("E3:I3")
+
+    .AutoFill Destination:=PY_Setup_1.Range("E3:I2")
+    .AutoFill Destination:=PY_Setup_1.Range("E3:I" & End_Point + 1)
+
+End With
+
+
+'Set up PY_Setup 2
+'Filter it to Saturday Only and copy over
+
+With PY_Setup_1.Range("A:I")
+    .AutoFilter Field:=5, Criteria1:=Array("F", "M", "T", "W"), Operator:=xlFilterValues
+    .Copy
+End With
+
+
+With PY_Setup_2
+    .Activate
+    .Range("A:I").PasteSpecial xlPasteValues
+End With
+
+PY_Setup_1.AutoFilterMode = False
+
+'Format dates to m/d
+
+PY_Setup_2.Range("H:I").NumberFormat = "m/d"
+
+'Set up PY Setup 3
+
+PY_Setup_3.Activate
+PY_Setup_3.Cells.ClearContents
+
+PY_Setup_2.Range("E:E").Copy
+PY_Setup_3.Range("A:A").PasteSpecial xlPasteValues
+PY_Setup_3.Range("A:A").PasteSpecial xlPasteFormats
+
+PY_Setup_2.Range("H:H").Copy
+PY_Setup_3.Range("B:B").PasteSpecial xlPasteValues
+PY_Setup_3.Range("B:B").PasteSpecial xlPasteFormats
+
+PY_Setup_2.Range("F:F").Copy
+PY_Setup_3.Range("C:C").PasteSpecial xlPasteValues
+
+PY_Setup_2.Range("I:I").Copy
+PY_Setup_3.Range("D:D").PasteSpecial xlPasteValues
+PY_Setup_3.Range("D:D").PasteSpecial xlPasteFormats
+
+PY_Setup_2.Range("G:G").Copy
+PY_Setup_3.Range("E:E").PasteSpecial xlPasteValues
+PY_Setup_3.Range("E:E").PasteSpecial xlPasteFormats
+
+'Transpose Figures
+
+PY_Setup_3.Range("A1").CurrentRegion.Copy
+
+PY_Setup_3.Range("H1").PasteSpecial Paste:=xlPasteValues, Transpose:=True
+PY_Setup_3.Range("H1").PasteSpecial Paste:=xlPasteFormats, Transpose:=True
+
+End Sub
